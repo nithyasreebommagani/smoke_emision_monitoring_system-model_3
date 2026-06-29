@@ -1,0 +1,97 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: smoke_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: smoke_emission_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - smoke_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: smoke_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    networks:
+      - smoke_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: smoke_backend
+    restart: always
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgrespassword@postgres:5432/smoke_emission_db
+      - REDIS_URL=redis://redis:6379/0
+      - JWT_SECRET=supersecretjwtkeyforbackendenvironment9876543210
+      - UPLOAD_DIR=/app/evidence
+    ports:
+      - "8000:8000"
+    volumes:
+      - shared_evidence:/app/evidence
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - smoke_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: smoke_frontend
+    restart: always
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - smoke_network
+
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    container_name: smoke_worker
+    restart: always
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgrespassword@postgres:5432/smoke_emission_db
+      - REDIS_URL=redis://redis:6379/0
+      - EVIDENCE_DIR=/app/evidence
+      - MODEL_SMOKE_PATH=/app/models/best.pt
+      - MODEL_VEHICLE_PATH=/app/models/yolov8n.pt
+      - MODEL_PLATE_PATH=/app/models/plate.pt
+      - VIDEO_INPUT_PATH=/app/videos/traffic.mp4
+      - USE_REDIS_STREAM=false # Toggle to read from Redis streams vs input video
+    volumes:
+      - shared_evidence:/app/evidence
+      - ./worker/models:/app/models
+      - ./worker/videos:/app/videos
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - smoke_network
+
+volumes:
+  pgdata:
+  redisdata:
+  shared_evidence:
+
+networks:
+  smoke_network:
+    driver: bridge
