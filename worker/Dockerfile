@@ -13,7 +13,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 
 # Install PyTorch CPU version to prevent huge image sizes (since default ultralytics pulls CUDA PyTorch which is multi-gigabyte)
-RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
+RUN pip install --no-cache-dir \
+    torch torchvision torchaudio \
+    --index-url https://download.pytorch.org/whl/cu121
 
 RUN pip install --no-cache-dir -r requirements.txt
 
