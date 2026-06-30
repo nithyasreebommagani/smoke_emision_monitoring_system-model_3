@@ -187,6 +187,7 @@ def fix_plate_ocr(plate_number):
 def read_plate_from_crop(plate_crop, stable_id):
     gray = cv2.cvtColor(plate_crop, cv2.COLOR_BGR2GRAY)
     gray = cv2.resize(gray, (333, 75))
+    
     gray = cv2.bilateralFilter(gray, 11, 17, 17)
     _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     results = reader.readtext(thresh, allowlist="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", detail=1, paragraph=False)
@@ -304,7 +305,7 @@ def process_image_frame(frame, frame_no, fps, out_writer):
     recent_frames.append(frame.copy())
 
     # Detect Smoke
-    smoke_results = smoke_model(frame, conf=0.18, imgsz=640, verbose=False)
+    smoke_results = smoke_model(frame, conf=0.18, imgsz=960, verbose=False)
     smoke_boxes = []
     
     for box in smoke_results[0].boxes:
@@ -314,7 +315,7 @@ def process_image_frame(frame, frame_no, fps, out_writer):
         cv2.putText(frame, "Smoke", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 
     # Detect Vehicles
-    vehicle_results = vehicle_model(frame, conf=0.20, imgsz=640, verbose=False)
+    vehicle_results = vehicle_model(frame, conf=0.20, imgsz=960, verbose=False)
     current_vehicles = []
 
     for box in vehicle_results[0].boxes:
@@ -406,6 +407,10 @@ def process_image_frame(frame, frame_no, fps, out_writer):
                     if plate_crop.size > 0:
                         cv2.imwrite(plate_path, plate_crop)
                         plate_saved = True
+                        print(
+                            f"Vehicle {stable_id} plate size = "
+                            f"{plate_crop.shape[1]}x{plate_crop.shape[0]}"
+                        )
                         plate_number = read_plate_from_crop(plate_crop, stable_id)
                         if plate_number:
                             vehicle_ocr_history[stable_id].append(plate_number)
