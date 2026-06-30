@@ -21,7 +21,7 @@ REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:postgrespassword@localhost:5432/smoke_emission_db")
 EVIDENCE_DIR = os.environ.get("EVIDENCE_DIR", "evidence")
 USE_REDIS_STREAM = os.environ.get("USE_REDIS_STREAM", "false").lower() == "true"
-VIDEO_INPUT_PATH = os.environ.get("VIDEO_INPUT_PATH", r"C:\Users\nithy\Downloads\WhatsApp Video 2026-06-24 at 3.52.07 PM.mp4")
+VIDEO_INPUT_PATH = os.environ.get("VIDEO_INPUT_PATH", r"C:\Users\Home\Desktop\model3\smoke_emision_monitoring_system-model_3\worker\videos\traffic.mp4")
 
 # Model paths
 MODEL_SMOKE_PATH = os.environ.get("MODEL_SMOKE_PATH", "best.pt")
