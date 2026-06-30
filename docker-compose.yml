@@ -66,7 +66,6 @@ services:
     build:
       context: ./worker
       dockerfile: Dockerfile
-    gpus: all
     container_name: smoke_worker
     restart: "no"
     environment:

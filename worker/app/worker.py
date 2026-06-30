@@ -13,7 +13,11 @@ import redis
 import numpy as np
 from ultralytics import YOLO
 import easyocr
+import torch
 
+DEVICE = 0 if torch.cuda.is_available() else "cpu"
+
+print(f"Using device: {DEVICE}")
 # =====================================
 # ENV CONFIGURATION
 # =====================================
@@ -305,7 +309,7 @@ def process_image_frame(frame, frame_no, fps, out_writer):
     recent_frames.append(frame.copy())
 
     # Detect Smoke
-    smoke_results = smoke_model(frame, conf=0.18, imgsz=960, verbose=False)
+    smoke_results = smoke_model(frame, conf=0.18, imgsz=960, device=DEVICE, verbose=False)
     smoke_boxes = []
     
     for box in smoke_results[0].boxes:
@@ -315,7 +319,7 @@ def process_image_frame(frame, frame_no, fps, out_writer):
         cv2.putText(frame, "Smoke", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 
     # Detect Vehicles
-    vehicle_results = vehicle_model(frame, conf=0.20, imgsz=960, verbose=False)
+    vehicle_results = vehicle_model(frame, conf=0.20, imgsz=960, device=DEVICE,verbose=False)
     current_vehicles = []
 
     for box in vehicle_results[0].boxes:
@@ -389,7 +393,7 @@ def process_image_frame(frame, frame_no, fps, out_writer):
             plate_results = None
             if vehicle_crop is not None and vehicle_crop.size > 0:
                 try:
-                    plate_results = plate_model(vehicle_crop, conf=0.10, verbose=False)
+                    plate_results = plate_model(vehicle_crop, conf=0.10, device=DEVICE, verbose=False)
                 except Exception as e:
                     print(f"Plate model error: {e}")
 
