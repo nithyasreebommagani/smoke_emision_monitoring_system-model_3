@@ -227,13 +227,25 @@ def read_plate_from_crop(plate_crop, stable_id):
 # =====================================
 # POSTGRES WRITER
 # =====================================
+
 def save_violation_to_postgres(stable_id, final_plate, timestamp, smoke_count, rel_crop_path, rel_plate_path, rel_frame_path, rel_video_path):
     print(f"Saving violation event for stable ID {stable_id} to Postgres...")
     conn = None
     try:
         conn = psycopg2.connect(DATABASE_URL)
         cur = conn.cursor()
-        
+        # Skip duplicates within last 1 hour
+        cur.execute("""
+            SELECT id
+            FROM violations
+            WHERE plate_number = %s
+            AND created_at >= NOW() - INTERVAL '1 hour'
+            LIMIT 1
+        """, (final_plate,))
+
+        if cur.fetchone():
+            print(f"Duplicate violation skipped for {final_plate}")
+            return
         # Check if camera exists, get first camera
         cur.execute("SELECT id FROM cameras LIMIT 1;")
         res = cur.fetchone()
@@ -280,7 +292,7 @@ def save_violation_to_postgres(stable_id, final_plate, timestamp, smoke_count, r
                 "timestamp": timestamp,
                 "confidence": confidence,
                 "status": status,
-                "camera_name": "Toll Plaza Lane 1",
+                "camera_name": "Video Source",
                 "message": msg,
                 "created_at": created_at.isoformat()
             }
@@ -426,8 +438,20 @@ def process_image_frame(frame, frame_no, fps, out_writer):
                 cv2.imwrite(plate_path, dummy_plate)
 
             final_plate = "UNKNOWN"
+
             if vehicle_ocr_history[stable_id]:
-                final_plate = Counter(vehicle_ocr_history[stable_id]).most_common(1)[0][0]
+                final_plate = Counter(
+                    vehicle_ocr_history[stable_id]
+                ).most_common(1)[0][0]
+
+            # Skip if OCR failed
+            if final_plate == "UNKNOWN":
+                print(
+                    f"Skipping Vehicle {stable_id} - "
+                    f"no valid plate detected"
+                )
+                saved_suspects.add(stable_id)
+                continue
 
             # Generate Proof Video from buffer
             print(f"Generating proof video for Vehicle {stable_id}...")

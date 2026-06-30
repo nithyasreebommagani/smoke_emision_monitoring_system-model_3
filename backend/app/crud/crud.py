@@ -8,7 +8,10 @@ from app.models.camera import Camera
 from app.models.violation import Violation
 from app.models.notification import Notification
 from app.schemas.schemas import CameraCreate, ViolationCreate
-
+def get_unique_vehicles_count(db):
+    return db.query(Violation.plate_number)\
+             .distinct()\
+             .count()
 # User Operations
 def get_user_by_username(db: Session, username: str) -> Optional[User]:
     return db.query(User).filter(User.username == username).first()

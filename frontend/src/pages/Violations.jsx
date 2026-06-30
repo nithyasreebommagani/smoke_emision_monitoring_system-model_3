@@ -159,7 +159,9 @@ const Violations = ({ onViewEvidence }) => {
                   </td>
                 </tr>
               ) : (
-                violations.map((v) => (
+                violations
+                  .filter(v => v.plate_number !== "UNKNOWN")
+                  .map((v) => (
                   <tr 
                     key={v.id} 
                     onClick={() => onViewEvidence(v.id)} 
@@ -167,13 +169,19 @@ const Violations = ({ onViewEvidence }) => {
                   >
                     <td>{new Date(v.created_at).toLocaleString()}</td>
                     <td>
-                      <div><b>{v.camera_name || 'Toll Plaza'}</b></div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Offset: {v.timestamp}</div>
+                      <div><b>{v.camera_name || 'Unknown Source'}</b></div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
+                        Time: {v.timestamp}
+                      </div>
                     </td>
                     <td style={{ fontFamily: 'monospace', fontSize: '1.05rem', fontWeight: 'bold', color: 'var(--color-primary)' }}>
                       {v.plate_number}
                     </td>
-                    <td>{(v.confidence * 100).toFixed(0)}%</td>
+                    <td>
+                      {v.confidence
+                        ? `${(v.confidence * 100).toFixed(0)}%`
+                        : 'N/A'}
+                    </td>
                     <td>
                       <span className={`status-badge ${v.status}`}>
                         {v.status}

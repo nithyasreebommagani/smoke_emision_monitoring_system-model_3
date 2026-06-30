@@ -40,13 +40,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Seed initial data
--- We'll add some cameras
-INSERT INTO cameras (id, name, location, status) VALUES
-('d3b07384-d113-49cd-a5d6-8ee441111111', 'Toll Plaza Lane 1', 'NH-44 Toll Gate, Bangalore', 'active'),
-('d3b07384-d113-49cd-a5d6-8ee442222222', 'Ring Road Junction', 'Outer Ring Road, Sector 5', 'active'),
-('d3b07384-d113-49cd-a5d6-8ee443333333', 'Industrial Sector Area', 'Peenya Industrial Area', 'inactive')
-ON CONFLICT (id) DO NOTHING;
+
 
 -- Seed default users
 -- Note: 'admin123' bcrypt hash is: $2b$12$EixZaYVK1YiYi1.61n385eM.J4.156B8N.P.UqQeB8K4S0XU8n4Jq

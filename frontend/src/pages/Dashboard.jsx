@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertOctagon, ShieldAlert, Video, Activity, TrendingUp, Calendar, ChevronRight } from 'lucide-react';
+import { AlertOctagon, ShieldAlert, Video, Activity, ChevronRight } from 'lucide-react';
 import MetricCard from '../components/MetricCard';
 import { dashboardService } from '../services/api';
 
@@ -41,17 +41,6 @@ const Dashboard = ({ newViolationTrigger, onViewEvidence }) => {
   }
 
   // Create SVG elements for daily trend visualization
-  const mockTrendData = [
-    { date: 'Mon', count: 12 },
-    { date: 'Tue', count: 18 },
-    { date: 'Wed', count: 15 },
-    { date: 'Thu', count: 28 },
-    { date: 'Fri', count: 22 },
-    { date: 'Sat', count: 32 },
-    { date: 'Sun', count: 26 }
-  ];
-
-  const maxCount = Math.max(...mockTrendData.map(d => d.count), 1);
 
   return (
     <div>
@@ -71,31 +60,16 @@ const Dashboard = ({ newViolationTrigger, onViewEvidence }) => {
           title="Total Violations" 
           value={summary?.total_violations ?? 0} 
           icon={AlertOctagon} 
-          description="Cumulative system log" 
-          trend="up" 
-          trendValue="12.3%" 
+          description="Cumulative system log"  
         />
         <MetricCard 
           title="Violations Today" 
           value={summary?.today_violations ?? 0} 
           icon={ShieldAlert} 
-          description="Detected since midnight" 
-          trend="up"
-          trendValue="24%" 
+          description="Detected since midnight"  
           color="var(--color-danger)" 
         />
-        <MetricCard 
-          title="Active Cameras" 
-          value={summary?.active_cameras ?? 0} 
-          icon={Video} 
-          description="Live ingest streams" 
-        />
-        <MetricCard 
-          title="Worker Node Load" 
-          value="0.32s" 
-          icon={TrendingUp} 
-          description="Avg. frame inference duration" 
-        />
+
       </div>
 
       <div className="dashboard-grid">
@@ -144,28 +118,6 @@ const Dashboard = ({ newViolationTrigger, onViewEvidence }) => {
                 </div>
               ))
             )}
-          </div>
-        </div>
-
-        {/* Weekly Trend Card */}
-        <div className="glass-panel chart-card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
-            <Calendar size={18} color="var(--color-primary)" />
-            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, fontFamily: 'var(--font-accent)' }}>7-Day Alert Trend</h3>
-          </div>
-          
-          <div className="chart-placeholder">
-            {mockTrendData.map((d) => {
-              const heightPct = (d.count / maxCount) * 80;
-              return (
-                <div key={d.date} className="bar-column">
-                  <div className="bar-fill" style={{ height: `${heightPct}%` }}>
-                    <span className="bar-value">{d.count}</span>
-                  </div>
-                  <span className="bar-label">{d.date}</span>
-                </div>
-              );
-            })}
           </div>
         </div>
       </div>

@@ -98,7 +98,7 @@ const Cameras = () => {
               <input 
                 type="text" 
                 className="input-field" 
-                placeholder="e.g. Toll Plaza Lane 2, Highway Highway Gate" 
+                placeholder="e.g. Live Camera Feed 1"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
@@ -110,7 +110,7 @@ const Cameras = () => {
               <input 
                 type="text" 
                 className="input-field" 
-                placeholder="e.g. NH-44 Toll Road KM 120, Outer Ring Road, Sector 5" 
+                placeholder="e.g. Uploaded Video or Live Stream" 
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 required
