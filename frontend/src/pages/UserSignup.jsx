@@ -38,10 +38,19 @@ const UserSignup = () => {
         navigate('/login');
       }, 2000);
     } catch (err) {
-      setError(
-        err.response?.data?.detail ||
-        'Registration failed. Please try a different username.'
-      );
+      let errorMsg = 'Registration failed. Please try a different username.';
+      if (err.response?.data?.detail) {
+        if (typeof err.response.data.detail === 'string') {
+          errorMsg = err.response.data.detail;
+        } else if (Array.isArray(err.response.data.detail)) {
+          errorMsg = err.response.data.detail[0].msg;
+        } else {
+          errorMsg = JSON.stringify(err.response.data.detail);
+        }
+      } else if (err.message) {
+        errorMsg = err.message;
+      }
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
