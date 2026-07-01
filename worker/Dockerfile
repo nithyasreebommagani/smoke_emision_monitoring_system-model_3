@@ -5,6 +5,7 @@ WORKDIR /app
 # Install system dependencies for OpenCV and postgres client
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    ffmpeg\
     libgl1 \
     libglib2.0-0 \
     libpq-dev \

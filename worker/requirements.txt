@@ -5,3 +5,4 @@ psycopg2-binary==2.9.9
 redis==5.0.3
 requests==2.31.0
 torchvision
+pytz==2024.1

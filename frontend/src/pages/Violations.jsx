@@ -167,7 +167,21 @@ const Violations = ({ onViewEvidence }) => {
                     onClick={() => onViewEvidence(v.id)} 
                     style={{ cursor: 'pointer' }}
                   >
-                    <td>{new Date(v.created_at).toLocaleString()}</td>
+                    <td>
+                      {new Date(v.created_at).toLocaleString(
+                        "en-IN",
+                        {
+                          timeZone: "Asia/Kolkata",
+                          day: "numeric",
+                          month: "numeric",
+                          year: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                          second: "2-digit",
+                          hour12: true
+                        }
+                      )}
+                    </td>
                     <td>
                       <div><b>{v.camera_name || 'Unknown Source'}</b></div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
