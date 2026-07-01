@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, Lock, User, Eye, EyeOff } from 'lucide-react';
+import { AlertTriangle, Lock, User, Eye, EyeOff, Shield, Upload } from 'lucide-react';
 import { authService } from '../services/api';
 
 const Login = () => {
+  const [loginMode, setLoginMode] = useState('admin'); // 'admin' or 'user'
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -18,8 +19,14 @@ const Login = () => {
     setLoading(true);
 
     try {
-      await authService.login(username, password);
-      navigate('/');
+      const data = await authService.login(username, password);
+
+      // Navigate based on the user's actual role from the server
+      if (data.role === 'admin') {
+        navigate('/');
+      } else {
+        navigate('/upload');
+      }
     } catch (err) {
       setError(
         err.response?.data?.detail ||
@@ -30,25 +37,105 @@ const Login = () => {
     }
   };
 
+  const isAdmin = loginMode === 'admin';
+
   return (
     <div className="login-wrapper">
       <div className="login-card glass-panel">
+
+        {/* ── Role Toggle ── */}
+        <div style={{
+          display: 'flex',
+          background: 'rgba(255,255,255,0.04)',
+          borderRadius: '12px',
+          padding: '4px',
+          marginBottom: '28px',
+          border: '1px solid rgba(255,255,255,0.06)'
+        }}>
+          <button
+            type="button"
+            onClick={() => { setLoginMode('admin'); setError(''); }}
+            style={{
+              flex: 1,
+              padding: '12px 16px',
+              borderRadius: '10px',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              fontSize: '0.9rem',
+              fontWeight: 600,
+              transition: 'all 0.25s ease',
+              background: isAdmin
+                ? 'linear-gradient(135deg, rgba(0,210,255,0.18), rgba(0,150,255,0.12))'
+                : 'transparent',
+              color: isAdmin ? 'var(--color-primary)' : 'var(--color-text-muted)',
+              boxShadow: isAdmin ? '0 0 20px rgba(0,210,255,0.08)' : 'none'
+            }}
+          >
+            <Shield size={18} />
+            Admin
+          </button>
+          <button
+            type="button"
+            onClick={() => { setLoginMode('user'); setError(''); }}
+            style={{
+              flex: 1,
+              padding: '12px 16px',
+              borderRadius: '10px',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              fontSize: '0.9rem',
+              fontWeight: 600,
+              transition: 'all 0.25s ease',
+              background: !isAdmin
+                ? 'linear-gradient(135deg, rgba(50,215,75,0.18), rgba(30,180,60,0.12))'
+                : 'transparent',
+              color: !isAdmin ? '#32d74b' : 'var(--color-text-muted)',
+              boxShadow: !isAdmin ? '0 0 20px rgba(50,215,75,0.08)' : 'none'
+            }}
+          >
+            <Upload size={18} />
+            User
+          </button>
+        </div>
+
+        {/* ── Header ── */}
         <div className="login-header">
           <div
             style={{
               display: 'inline-flex',
               padding: '16px',
-              background: 'rgba(0, 210, 255, 0.08)',
+              background: isAdmin
+                ? 'rgba(0, 210, 255, 0.08)'
+                : 'rgba(50, 215, 75, 0.08)',
               borderRadius: '12px',
-              border: '1px solid rgba(0, 210, 255, 0.15)',
-              marginBottom: '16px'
+              border: `1px solid ${isAdmin
+                ? 'rgba(0, 210, 255, 0.15)'
+                : 'rgba(50, 215, 75, 0.15)'}`,
+              marginBottom: '16px',
+              transition: 'all 0.3s ease'
             }}
           >
-            <AlertTriangle size={36} color="var(--color-primary)" />
+            {isAdmin
+              ? <Shield size={36} color="var(--color-primary)" />
+              : <Upload size={36} color="#32d74b" />
+            }
           </div>
 
           <h2 className="login-title">SMOKE MONITOR</h2>
-          <p className="login-subtitle">Sign in to operator dashboard</p>
+          <p className="login-subtitle">
+            {isAdmin
+              ? 'Sign in as Administrator'
+              : 'Sign in to upload & monitor videos'
+            }
+          </p>
         </div>
 
         {error && (
@@ -98,7 +185,7 @@ const Login = () => {
                 }}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter operator username"
+                placeholder={isAdmin ? 'Admin username' : 'Your username'}
                 required
               />
             </div>
@@ -165,11 +252,20 @@ const Login = () => {
             className="btn btn-primary"
             style={{
               width: '100%',
-              padding: '14px'
+              padding: '14px',
+              background: isAdmin
+                ? undefined
+                : 'linear-gradient(135deg, #32d74b, #28a745)',
+              transition: 'all 0.3s ease'
             }}
             disabled={loading}
           >
-            {loading ? 'Authenticating...' : 'Access Dashboard'}
+            {loading
+              ? 'Authenticating...'
+              : isAdmin
+                ? 'Access Admin Dashboard'
+                : 'Sign In & Upload Videos'
+            }
           </button>
 
           <button
@@ -194,7 +290,7 @@ const Login = () => {
             color: 'var(--color-text-muted)'
           }}
         >
-          Secured Operator Console &copy; 2026
+          Secured Monitoring Console &copy; 2026
         </div>
       </div>
     </div>

@@ -228,8 +228,8 @@ def read_plate_from_crop(plate_crop, stable_id):
 # POSTGRES WRITER
 # =====================================
 
-def save_violation_to_postgres(stable_id, final_plate, timestamp, smoke_count, rel_crop_path, rel_plate_path, rel_frame_path, rel_video_path):
-    print(f"Saving violation event for stable ID {stable_id} to Postgres...")
+def save_violation_to_postgres(stable_id, final_plate, timestamp, smoke_count, rel_crop_path, rel_plate_path, rel_frame_path, rel_video_path, uploaded_video_id=None):
+    print(f"Saving violation event for stable ID {stable_id} to Postgres (Upload Ref: {uploaded_video_id})...")
     conn = None
     try:
         conn = psycopg2.connect(DATABASE_URL)
@@ -262,12 +262,12 @@ def save_violation_to_postgres(stable_id, final_plate, timestamp, smoke_count, r
         # Insert violation record
         cur.execute("""
             INSERT INTO violations (
-                id, camera_id, plate_number, timestamp, confidence, status, 
+                id, camera_id, uploaded_video_id, plate_number, timestamp, confidence, status, 
                 worker_id, model_version, processing_duration, 
                 vehicle_crop_path, plate_crop_path, annotated_frame_path, proof_video_path, created_at
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
         """, (
-            violation_id, camera_id, final_plate, timestamp, confidence, status,
+            violation_id, camera_id, uploaded_video_id, final_plate, timestamp, confidence, status,
             worker_id, model_version, processing_duration,
             rel_crop_path, rel_plate_path, rel_frame_path, rel_video_path, created_at
         ))
@@ -313,7 +313,7 @@ def save_violation_to_postgres(stable_id, final_plate, timestamp, smoke_count, r
 # We maintain buffered frames for generating proof videos
 recent_frames = deque(maxlen=300)
 
-def process_image_frame(frame, frame_no, fps, out_writer):
+def process_image_frame(frame, frame_no, fps, out_writer, uploaded_video_id=None):
     global next_stable_id
     used_ids_this_frame.clear()
     
@@ -331,7 +331,7 @@ def process_image_frame(frame, frame_no, fps, out_writer):
         cv2.putText(frame, "Smoke", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 
     # Detect Vehicles
-    vehicle_results = vehicle_model(frame, conf=0.20, imgsz=960, device=DEVICE,verbose=False)
+    vehicle_results = vehicle_model(frame, conf=0.20, imgsz=960, device=DEVICE, verbose=False)
     current_vehicles = []
 
     for box in vehicle_results[0].boxes:
@@ -380,14 +380,17 @@ def process_image_frame(frame, frame_no, fps, out_writer):
             time_string = f"{minutes:02d}:{seconds:02d}"
 
             # Prepare relative paths and write files
-            crop_filename = f"Vehicle_{stable_id}_crop.jpg"
-            frame_filename = f"Vehicle_{stable_id}_frame.jpg"
-            plate_filename = f"Vehicle_{stable_id}_plate.jpg"
-            video_filename = f"Vehicle_{stable_id}_proof.mp4"
+            prefix = f"upload_{uploaded_video_id}_" if uploaded_video_id else "default_"
+            crop_filename = f"Vehicle_{prefix}{stable_id}_crop.jpg"
+            frame_filename = f"Vehicle_{prefix}{stable_id}_frame.jpg"
+            plate_filename = f"Vehicle_{prefix}{stable_id}_plate.jpg"
+            video_filename_temp = f"Vehicle_{prefix}{stable_id}_proof_temp.mp4"
+            video_filename = f"Vehicle_{prefix}{stable_id}_proof.mp4"
 
             crop_path = os.path.join(EVIDENCE_DIR, "crops", crop_filename)
             frame_path = os.path.join(EVIDENCE_DIR, "frames", frame_filename)
             plate_path = os.path.join(EVIDENCE_DIR, "plates", plate_filename)
+            video_path_temp = os.path.join(EVIDENCE_DIR, "videos", video_filename_temp)
             video_path = os.path.join(EVIDENCE_DIR, "videos", video_filename)
 
             if stable_id in best_vehicle_frame:
@@ -432,7 +435,7 @@ def process_image_frame(frame, frame_no, fps, out_writer):
                             vehicle_ocr_history[stable_id].append(plate_number)
 
             if not plate_saved:
-                # Mock plate image since we need evidence placeholder
+                # Fallback empty plate image
                 dummy_plate = np.zeros((100, 300, 3), dtype=np.uint8)
                 cv2.putText(dummy_plate, "PLATE CROP", (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
                 cv2.imwrite(plate_path, dummy_plate)
@@ -457,7 +460,7 @@ def process_image_frame(frame, frame_no, fps, out_writer):
             print(f"Generating proof video for Vehicle {stable_id}...")
             height, width = frame.shape[:2]
             v_writer = cv2.VideoWriter(
-                video_path,
+                video_path_temp,
                 cv2.VideoWriter_fourcc(*"mp4v"),
                 fps,
                 (width, height)
@@ -466,6 +469,26 @@ def process_image_frame(frame, frame_no, fps, out_writer):
             for f_buf in recent_frames:
                 v_writer.write(f_buf)
             v_writer.release()
+
+            # Convert to browser compatible H.264 format
+            import subprocess
+            try:
+                cmd = [
+                    "ffmpeg", "-y", "-i", video_path_temp,
+                    "-vcodec", "libx264", "-pix_fmt", "yuv420p",
+                    "-profile:v", "baseline", "-level", "3.0", video_path
+                ]
+                subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+                if os.path.exists(video_path_temp):
+                    os.remove(video_path_temp)
+            except Exception as e:
+                print(f"Error converting video to H264: {e}")
+                # Fallback to direct renaming if ffmpeg fails
+                try:
+                    import shutil
+                    shutil.move(video_path_temp, video_path)
+                except Exception as move_err:
+                    print(f"Fallback move failed: {move_err}")
 
             # Save violation details in PostgreSQL
             save_violation_to_postgres(
@@ -476,7 +499,8 @@ def process_image_frame(frame, frame_no, fps, out_writer):
                 f"crops/{crop_filename}",
                 f"plates/{plate_filename}",
                 f"frames/{frame_filename}",
-                f"videos/{video_filename}"
+                f"videos/{video_filename}",
+                uploaded_video_id
             )
             saved_suspects.add(stable_id)
 
@@ -487,6 +511,93 @@ def process_image_frame(frame, frame_no, fps, out_writer):
 
     if out_writer is not None:
         out_writer.write(frame)
+
+# =====================================
+# QUEUE TASK RUNNER
+# =====================================
+def process_video_file(filepath, uploaded_video_id=None):
+    abs_path = os.path.join(EVIDENCE_DIR, filepath) if not os.path.isabs(filepath) else filepath
+    print(f"Worker processing video: {abs_path}")
+    
+    cap = cv2.VideoCapture(abs_path)
+    if not cap.isOpened():
+        print(f"ERROR: Could not open video file {abs_path}")
+        return False
+        
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    if fps == 0:
+        fps = 30
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    
+    frame_no = 0
+    # Clear tracker data between runs to prevent bleed-through
+    global stable_tracks, next_stable_id, track_age, smoke_history, saved_suspects, vehicle_ocr_history, best_vehicle_crop, best_vehicle_frame, best_vehicle_area
+    stable_tracks.clear()
+    next_stable_id = 1
+    track_age.clear()
+    smoke_history.clear()
+    saved_suspects.clear()
+    vehicle_ocr_history.clear()
+    best_vehicle_crop.clear()
+    best_vehicle_frame.clear()
+    best_vehicle_area.clear()
+    
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        frame_no += 1
+        if frame_no % 30 == 0:
+            print(f"Processing frame: {frame_no}")
+        process_image_frame(frame, frame_no, fps, None, uploaded_video_id)
+        
+    cap.release()
+    print(f"Finished processing video file {abs_path}")
+    return True
+
+def update_video_status_in_postgres(video_id, status):
+    if not video_id:
+        return
+    print(f"Updating video {video_id} status to '{status}'...")
+    conn = None
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor()
+        
+        # Get filename first for notification payload
+        cur.execute("SELECT filename FROM uploaded_videos WHERE id = %s", (video_id,))
+        res = cur.fetchone()
+        filename = res[0] if res else "Unknown Video"
+
+        cur.execute("""
+            UPDATE uploaded_videos
+            SET status = %s
+            WHERE id = %s
+        """, (status, video_id))
+        conn.commit()
+        cur.close()
+        print(f"Video {video_id} status updated to {status} successfully.")
+        
+        # Publish WebSocket / Redis notification event
+        if redis_client:
+            event_payload = {
+                "type": "video_status",
+                "video_id": str(video_id),
+                "status": status,
+                "filename": filename,
+                "message": f"Video '{filename}' processing has {status}.",
+                "created_at": datetime.utcnow().isoformat()
+            }
+            redis_client.publish("violations:notifications", json.dumps(event_payload))
+            print("Published video status update to Redis.")
+    except Exception as e:
+        print(f"Error updating video status in PostgreSQL: {e}")
+        if conn:
+            conn.rollback()
+    finally:
+        if conn:
+            conn.close()
 
 # =====================================
 # MAIN INGESTION LAYER
@@ -533,49 +644,50 @@ def run_worker():
                 print(f"Error reading from Redis Stream: {e}")
                 time.sleep(1)
     else:
-        print(f"Starting in VIDEO PATH ingestion mode, video: {VIDEO_INPUT_PATH}")
-        cap = cv2.VideoCapture(VIDEO_INPUT_PATH)
-        if not cap.isOpened():
-            print(f"ERROR: Could not open video file {VIDEO_INPUT_PATH}")
-            # Try camera index 0 as backup
-            print("Attempting to open default camera 0 as fallback...")
-            cap = cv2.VideoCapture(0)
-            if not cap.isOpened():
-                print("Failed to open fallback camera. Idle waiting...")
-                while True:
-                    time.sleep(10)
-
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        if fps == 0:
-            fps = 30
-        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
-        out = cv2.VideoWriter(
-            "stable_suspect_output.mp4",
-            cv2.VideoWriter_fourcc(*"mp4v"),
-            fps,
-            (width, height)
-        )
-
-        frame_no = 0
-        print("Processing video...")
+        print("Starting in QUEUE/VIDEO ingestion mode...")
+        has_processed_default = False
         
         while True:
-            ret, frame = cap.read()
-            if not ret:
-                print("End of video stream or error reading frame.")
-                break
-            
-            frame_no += 1
-            if frame_no % 30 == 0:
-                print(f"Processing frame: {frame_no}")
+            task_data = None
+            if redis_client:
+                try:
+                    # Wait up to 2 seconds for a task
+                    task_bytes = redis_client.blpop("video:tasks", timeout=2)
+                    if task_bytes:
+                        # blpop returns a tuple (key, value)
+                        task_data = json.loads(task_bytes[1])
+                except Exception as e:
+                    print(f"Error reading from Redis queue: {e}")
+                    time.sleep(2)
+                    continue
 
-            process_image_frame(frame, frame_no, fps, out)
-
-        cap.release()
-        out.release()
-        print("Finished video file processing.")
+            if task_data:
+                video_id = task_data.get("video_id")
+                filepath = task_data.get("filepath")
+                filename = task_data.get("filename")
+                print(f"Received video task: {filename} (ID: {video_id})")
+                
+                update_video_status_in_postgres(video_id, "processing")
+                try:
+                    success = process_video_file(filepath, video_id)
+                    if success:
+                        update_video_status_in_postgres(video_id, "completed")
+                    else:
+                        update_video_status_in_postgres(video_id, "failed")
+                except Exception as e:
+                    print(f"Error processing video task: {e}")
+                    update_video_status_in_postgres(video_id, "failed")
+            else:
+                # Process default video if it exists and hasn't been processed yet
+                if not has_processed_default and VIDEO_INPUT_PATH and os.path.exists(VIDEO_INPUT_PATH):
+                    print(f"No queued tasks. Processing default video: {VIDEO_INPUT_PATH}")
+                    try:
+                        process_video_file(VIDEO_INPUT_PATH, None)
+                    except Exception as e:
+                        print(f"Error processing default video: {e}")
+                    has_processed_default = True
+                else:
+                    time.sleep(1)
 
 if __name__ == "__main__":
     print("Worker process running...")

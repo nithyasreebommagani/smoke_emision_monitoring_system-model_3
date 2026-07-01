@@ -50,6 +50,9 @@ export const authService = {
       localStorage.setItem('token', response.data.access_token);
       localStorage.setItem('userRole', response.data.role);
       localStorage.setItem('username', username);
+      if (response.data.user_id) {
+        localStorage.setItem('userId', response.data.user_id);
+      }
     }
     return response.data;
   },
@@ -57,6 +60,7 @@ export const authService = {
     localStorage.removeItem('token');
     localStorage.removeItem('userRole');
     localStorage.removeItem('username');
+    localStorage.removeItem('userId');
     window.location.href = '/login';
   },
   isAuthenticated: () => {
@@ -67,6 +71,9 @@ export const authService = {
   },
   getUsername: () => {
     return localStorage.getItem('username') || '';
+  },
+  getUserId: () => {
+    return localStorage.getItem('userId') || '';
   }
 };
 
@@ -106,6 +113,51 @@ export const cameraService = {
   },
   registerCamera: async (cameraData) => {
     const response = await api.post('/cameras', cameraData);
+    return response.data;
+  }
+};
+export const uploadService = {
+  uploadVideo: async (file, onUploadProgress) => {
+    const formData = new FormData();
+    formData.append("video", file);
+
+    // Do NOT set Content-Type manually — axios must set it automatically
+    // with the multipart boundary token. Overriding it breaks the request.
+    const response = await api.post("/upload", formData, {
+      headers: { "Content-Type": undefined },
+      onUploadProgress
+    });
+
+    return response.data;
+  },
+
+  getMyVideos: async () => {
+    const response = await api.get("/upload");
+    return response.data;
+  },
+
+  getVideoStatus: async (id) => {
+    const response = await api.get(`/upload/${id}`);
+    return response.data;
+  },
+
+  getAllVideos: async () => {
+    const response = await api.get("/upload/all");
+    return response.data;
+  }
+};
+
+export const userService = {
+  getDashboard: async () => {
+    const response = await api.get('/user/dashboard');
+    return response.data;
+  },
+  getMyViolations: async (params) => {
+    const response = await api.get('/user/violations', { params });
+    return response.data;
+  },
+  getViolationDetail: async (id) => {
+    const response = await api.get(`/user/violations/${id}`);
     return response.data;
   }
 };

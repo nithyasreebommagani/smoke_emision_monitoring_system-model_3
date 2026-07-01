@@ -8,8 +8,9 @@ import {
 } from 'react-router-dom';
 
 import Sidebar from './components/Sidebar';
+import UserSidebar from './components/UserSidebar';
 import NotificationToast from './components/NotificationToast';
-
+import UploadVideo from "./pages/UploadVideo";
 import Dashboard from './pages/Dashboard';
 import Violations from './pages/Violations';
 import Reports from './pages/Reports';
@@ -18,19 +19,51 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Evidence from './pages/Evidence';
 
+// User Portal Pages
+import UserSignup from './pages/UserSignup';
+import UserDashboard from './pages/user/UserDashboard';
+import UserUpload from './pages/user/UserUpload';
+import UserViolations from './pages/user/UserViolations';
+import UserEvidence from './pages/user/UserEvidence';
+import UserLiveCamera from './pages/user/UserLiveCamera';
+
 import { authService } from './services/api';
 
-// Route Guard
-const PrivateRoute = ({ children }) => {
-  return authService.isAuthenticated()
-    ? children
-    : <Navigate to="/login" replace />;
+// Route Guards
+const AdminRoute = ({ children }) => {
+  const isAuthenticated = authService.isAuthenticated();
+  const role = authService.getUserRole();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (role !== 'admin') return <Navigate to="/user/dashboard" replace />;
+  return children;
+};
+
+const UserRoute = ({ children }) => {
+  const isAuthenticated = authService.isAuthenticated();
+  const role = authService.getUserRole();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (role === 'admin') return <Navigate to="/" replace />;
+  return children;
 };
 
 const MainLayout = ({ children, newViolationTrigger, onViewEvidence }) => {
   return (
     <div className="app-container">
       <Sidebar />
+      <div className="main-content">
+        {React.cloneElement(children, {
+          newViolationTrigger,
+          onViewEvidence
+        })}
+      </div>
+    </div>
+  );
+};
+
+const UserLayout = ({ children, newViolationTrigger, onViewEvidence }) => {
+  return (
+    <div className="app-container">
+      <UserSidebar />
       <div className="main-content">
         {React.cloneElement(children, {
           newViolationTrigger,
@@ -48,12 +81,15 @@ const AppContent = () => {
 
   const location = useLocation();
   const isAuthenticated = authService.isAuthenticated();
+  const role = authService.getUserRole();
+  const isAdmin = role === 'admin';
 
   useEffect(() => {
     if (
       !isAuthenticated ||
       location.pathname === '/login' ||
-      location.pathname === '/register'
+      location.pathname === '/register' ||
+      location.pathname === '/signup'
     ) {
       return;
     }
@@ -84,8 +120,8 @@ const AppContent = () => {
         setToasts((prev) => [
           ...prev,
           {
-            ...payload,
-            id: toastId
+            id: toastId,
+            ...payload
           }
         ]);
 
@@ -95,7 +131,7 @@ const AppContent = () => {
           setToasts((prev) =>
             prev.filter((t) => t.id !== toastId)
           );
-        }, 5000);
+        }, 6000);
 
       } catch (err) {
         console.error('WebSocket parse error:', err);
@@ -137,12 +173,12 @@ const AppContent = () => {
           path="/login"
           element={
             authService.isAuthenticated()
-              ? <Navigate to="/" replace />
+              ? (isAdmin ? <Navigate to="/" replace /> : <Navigate to="/user/dashboard" replace />)
               : <Login />
           }
         />
 
-        {/* Register */}
+        {/* Register (Existing Admin flow) */}
         <Route
           path="/register"
           element={
@@ -152,69 +188,151 @@ const AppContent = () => {
           }
         />
 
-        {/* Dashboard */}
+        {/* Signup (New User signup flow) */}
+        <Route
+          path="/signup"
+          element={
+            authService.isAuthenticated()
+              ? <Navigate to="/user/dashboard" replace />
+              : <UserSignup />
+          }
+        />
+
+        {/* Admin Dashboard */}
         <Route
           path="/"
           element={
-            <PrivateRoute>
+            <AdminRoute>
               <MainLayout
                 newViolationTrigger={newViolationTrigger}
                 onViewEvidence={handleViewEvidence}
               >
                 <Dashboard />
               </MainLayout>
-            </PrivateRoute>
+            </AdminRoute>
           }
         />
 
-        {/* Violations */}
+        {/* Admin Video Ingestion / Upload */}
+        <Route
+          path="/upload"
+          element={
+            <AdminRoute>
+              <MainLayout
+                newViolationTrigger={newViolationTrigger}
+                onViewEvidence={handleViewEvidence}
+              >
+                <UploadVideo />
+              </MainLayout>
+            </AdminRoute>
+          }
+        />
+
+        {/* Admin Violations */}
         <Route
           path="/violations"
           element={
-            <PrivateRoute>
+            <AdminRoute>
               <MainLayout
                 newViolationTrigger={newViolationTrigger}
                 onViewEvidence={handleViewEvidence}
               >
                 <Violations />
               </MainLayout>
-            </PrivateRoute>
+            </AdminRoute>
           }
         />
 
-        {/* Reports */}
+        {/* Admin Reports */}
         <Route
           path="/reports"
           element={
-            <PrivateRoute>
+            <AdminRoute>
               <MainLayout
                 newViolationTrigger={newViolationTrigger}
                 onViewEvidence={handleViewEvidence}
               >
                 <Reports />
               </MainLayout>
-            </PrivateRoute>
+            </AdminRoute>
           }
         />
 
-        {/* Cameras */}
+        {/* Admin Cameras */}
         <Route
           path="/cameras"
           element={
-            <PrivateRoute>
+            <AdminRoute>
               <MainLayout
                 newViolationTrigger={newViolationTrigger}
                 onViewEvidence={handleViewEvidence}
               >
                 <Cameras />
               </MainLayout>
-            </PrivateRoute>
+            </AdminRoute>
+          }
+        />
+
+        {/* User Portal Routes */}
+        <Route
+          path="/user/dashboard"
+          element={
+            <UserRoute>
+              <UserLayout
+                newViolationTrigger={newViolationTrigger}
+                onViewEvidence={handleViewEvidence}
+              >
+                <UserDashboard />
+              </UserLayout>
+            </UserRoute>
+          }
+        />
+
+        <Route
+          path="/user/upload"
+          element={
+            <UserRoute>
+              <UserLayout
+                newViolationTrigger={newViolationTrigger}
+                onViewEvidence={handleViewEvidence}
+              >
+                <UserUpload />
+              </UserLayout>
+            </UserRoute>
+          }
+        />
+
+        <Route
+          path="/user/violations"
+          element={
+            <UserRoute>
+              <UserLayout
+                newViolationTrigger={newViolationTrigger}
+                onViewEvidence={handleViewEvidence}
+              >
+                <UserViolations />
+              </UserLayout>
+            </UserRoute>
+          }
+        />
+
+        <Route
+          path="/user/live-camera"
+          element={
+            <UserRoute>
+              <UserLayout
+                newViolationTrigger={newViolationTrigger}
+                onViewEvidence={handleViewEvidence}
+              >
+                <UserLiveCamera />
+              </UserLayout>
+            </UserRoute>
           }
         />
 
         <Route
           path="*"
-          element={<Navigate to="/" replace />}
+          element={isAdmin ? <Navigate to="/" replace /> : <Navigate to="/user/dashboard" replace />}
         />
 
       </Routes>
@@ -225,11 +343,18 @@ const AppContent = () => {
       />
 
       {selectedViolationId && (
-        <Evidence
-          violationId={selectedViolationId}
-          onClose={handleCloseEvidence}
-          onRefresh={handleRefreshData}
-        />
+        isAdmin ? (
+          <Evidence
+            violationId={selectedViolationId}
+            onClose={handleCloseEvidence}
+            onRefresh={handleRefreshData}
+          />
+        ) : (
+          <UserEvidence
+            violationId={selectedViolationId}
+            onClose={handleCloseEvidence}
+          />
+        )
       )}
     </>
   );

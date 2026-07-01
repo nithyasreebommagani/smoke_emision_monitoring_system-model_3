@@ -10,6 +10,7 @@ class Violation(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     camera_id = Column(UUID(as_uuid=True), ForeignKey("cameras.id", ondelete="SET NULL"), nullable=True)
+    uploaded_video_id = Column(UUID(as_uuid=True), ForeignKey("uploaded_videos.id", ondelete="SET NULL"), nullable=True)
     plate_number = Column(String(20), nullable=False)
     timestamp = Column(String(20), nullable=False)  # Time offset in video
     confidence = Column(Float, nullable=False)
@@ -24,4 +25,5 @@ class Violation(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     camera = relationship("Camera", back_populates="violations")
+    uploaded_video = relationship("UploadedVideo", back_populates="violations")
     notifications = relationship("Notification", back_populates="violation", cascade="all, delete-orphan")

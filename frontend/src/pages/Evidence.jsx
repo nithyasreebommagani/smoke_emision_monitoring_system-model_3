@@ -7,11 +7,14 @@ import {
   Video,
   Loader
 } from 'lucide-react';
-import { violationService } from '../services/api';
+import { violationService, authService } from '../services/api';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = '';
 
 const Evidence = ({ violationId, onClose, onRefresh }) => {
+  const role = authService.getUserRole();
+  const isAdmin = role === 'admin';
+
   const [details, setDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -241,7 +244,7 @@ const Evidence = ({ violationId, onClose, onRefresh }) => {
               </p>
             </div>
 
-            {details.status === 'pending' && (
+            {isAdmin && details.status === 'pending' && (
               <div
                 style={{
                   display: 'flex',

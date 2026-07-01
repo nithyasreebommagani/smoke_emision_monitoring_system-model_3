@@ -1,8 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Search, Filter, Eye, ArrowUpDown, ChevronLeft, ChevronRight, Check, X, RotateCcw } from 'lucide-react';
-import { violationService } from '../services/api';
+import { violationService, authService } from '../services/api';
 
 const Violations = ({ onViewEvidence }) => {
+  const [searchParams] = useSearchParams();
+  const uploadedVideoId = searchParams.get('uploaded_video_id') || '';
+  const role = authService.getUserRole();
+  const isAdmin = role === 'admin';
+
   const [violations, setViolations] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -25,6 +31,7 @@ const Violations = ({ onViewEvidence }) => {
       };
       if (searchPlate) params.plate_number = searchPlate;
       if (statusFilter) params.status = statusFilter;
+      if (uploadedVideoId) params.uploaded_video_id = uploadedVideoId;
 
       const data = await violationService.getViolations(params);
       setViolations(data.items);
@@ -38,7 +45,7 @@ const Violations = ({ onViewEvidence }) => {
 
   useEffect(() => {
     fetchViolations();
-  }, [page, statusFilter, sortBy, sortOrder]);
+  }, [page, statusFilter, sortBy, sortOrder, uploadedVideoId]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -142,7 +149,7 @@ const Violations = ({ onViewEvidence }) => {
                   Confidence <ArrowUpDown size={12} style={{ marginLeft: '4px' }} />
                 </th>
                 <th>Status</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
+                <th style={{ textAlign: 'right' }}>{isAdmin ? 'Actions' : 'Inspect'}</th>
               </tr>
             </thead>
             <tbody>
@@ -189,7 +196,7 @@ const Violations = ({ onViewEvidence }) => {
                     </td>
                     <td style={{ textAlign: 'right' }}>
                       <div style={{ display: 'inline-flex', gap: '8px' }}>
-                        {v.status === 'pending' && (
+                        {isAdmin && v.status === 'pending' && (
                           <>
                             <button 
                               onClick={(e) => handleUpdateStatus(v.id, 'approved', e)}

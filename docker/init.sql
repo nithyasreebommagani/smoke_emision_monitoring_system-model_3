@@ -15,9 +15,19 @@ CREATE TABLE IF NOT EXISTS cameras (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS uploaded_videos (
+    id UUID PRIMARY KEY,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    filename VARCHAR(255) NOT NULL,
+    filepath VARCHAR(500) NOT NULL,
+    status VARCHAR(20) NOT NULL, -- 'queued', 'processing', 'completed', 'failed'
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS violations (
     id UUID PRIMARY KEY,
     camera_id UUID REFERENCES cameras(id) ON DELETE SET NULL,
+    uploaded_video_id UUID REFERENCES uploaded_videos(id) ON DELETE SET NULL,
     plate_number VARCHAR(20) NOT NULL,
     timestamp VARCHAR(20) NOT NULL,
     confidence FLOAT NOT NULL,
@@ -42,10 +52,10 @@ CREATE TABLE IF NOT EXISTS notifications (
 
 
 
--- Seed default users
--- Note: 'admin123' bcrypt hash is: $2b$12$EixZaYVK1YiYi1.61n385eM.J4.156B8N.P.UqQeB8K4S0XU8n4Jq
--- Note: 'operator123' bcrypt hash is: $2b$12$FhKk/Zsk7Q7lQ6tV5X7vfevM7s7JjP69F8B5S.b7a3gqKjM8Q3mG2 (or similar, we can insert standard bcrypt hashes)
+-- Seed default users (pbkdf2_sha256 hashes - matching backend security config)
+-- admin / admin123
+-- operator / operator123
 INSERT INTO users (id, username, hashed_password, role) VALUES
-('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'admin', '$2b$12$qRz9lYtM2z5Z/wFk2.N8h.8mQ9v1b1lZ54D6mHjU5.8iFzOq8v6K.', 'admin'), -- admin123
-('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'operator', '$2b$12$qRz9lYtM2z5Z/wFk2.N8h.8mQ9v1b1lZ54D6mHjU5.8iFzOq8v6K.', 'operator') -- operator123
+('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'admin', '$pbkdf2-sha256$29000$JEQIASBECKFUKsV47/3fWw$fFdbkwH869wUUWpoTYfibxHABGK8tUKGREhSJNJoiao', 'admin'),
+('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'operator', '$pbkdf2-sha256$29000$6t0bo7S2FmJMSel9j7FWyg$B6c6i2Cwmfn87jy5ub89K2uRyuuaeC6MXeVNHCUdGxo', 'operator')
 ON CONFLICT (username) DO NOTHING;

@@ -4,8 +4,11 @@ from uuid import UUID
 from typing import List, Optional
 import json
 import redis
+import os
+from fastapi.responses import FileResponse
+
 from app.core.database import get_db
-from app.core.security import get_current_user
+from app.core.security import get_current_user, verify_admin
 from app.crud import crud
 from app.schemas.schemas import ViolationCreate, ViolationResponse, ViolationUpdateStatus
 from app.core.config import settings
@@ -19,6 +22,7 @@ def read_violations(
     plate_number: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
     camera_id: Optional[UUID] = Query(None),
+    uploaded_video_id: Optional[UUID] = Query(None),
     sort_by: str = Query("created_at"),
     sort_order: str = Query("desc"),
     db: Session = Depends(get_db),
@@ -31,6 +35,7 @@ def read_violations(
         plate_number=plate_number,
         status=status,
         camera_id=camera_id,
+        uploaded_video_id=uploaded_video_id,
         sort_by=sort_by,
         sort_order=sort_order
     )
@@ -41,6 +46,7 @@ def read_violations(
         items.append(ViolationResponse(
             id=v.id,
             camera_id=v.camera_id,
+            uploaded_video_id=v.uploaded_video_id,
             camera_name=v.camera.name if v.camera else "Unknown",
             plate_number=v.plate_number,
             timestamp=v.timestamp,
@@ -78,6 +84,7 @@ def read_violation(
     return ViolationResponse(
         id=v.id,
         camera_id=v.camera_id,
+        uploaded_video_id=v.uploaded_video_id,
         camera_name=v.camera.name if v.camera else "Unknown",
         plate_number=v.plate_number,
         timestamp=v.timestamp,
@@ -125,6 +132,7 @@ def create_new_violation(
     return ViolationResponse(
         id=v.id,
         camera_id=v.camera_id,
+        uploaded_video_id=v.uploaded_video_id,
         camera_name=v.camera.name if v.camera else "Unknown",
         plate_number=v.plate_number,
         timestamp=v.timestamp,
@@ -145,7 +153,7 @@ def update_status(
     violation_id: UUID,
     status_update: ViolationUpdateStatus,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(verify_admin)
 ):
     v = crud.update_violation_status(db, violation_id, status_update.status)
     if not v:
@@ -156,6 +164,7 @@ def update_status(
     return ViolationResponse(
         id=v.id,
         camera_id=v.camera_id,
+        uploaded_video_id=v.uploaded_video_id,
         camera_name=v.camera.name if v.camera else "Unknown",
         plate_number=v.plate_number,
         timestamp=v.timestamp,
@@ -169,4 +178,17 @@ def update_status(
         annotated_frame_path=v.annotated_frame_path,
         proof_video_path=v.proof_video_path,
         created_at=v.created_at
+    )
+
+@router.get("/video/{filename}")
+def get_video(filename: str):
+    video_path = f"/app/evidence/videos/{filename}"
+
+    if not os.path.exists(video_path):
+        raise HTTPException(status_code=404, detail="Video not found")
+
+    return FileResponse(
+        video_path,
+        media_type="video/mp4",
+        filename=filename
     )

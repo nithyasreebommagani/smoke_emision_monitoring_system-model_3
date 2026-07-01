@@ -9,7 +9,7 @@ from app.core.security import (
     get_password_hash
 )
 from app.crud import crud
-from app.schemas.schemas import Token, UserLogin
+from app.schemas.schemas import Token, UserLogin, UserRegister
 from app.models.user import User
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -17,12 +17,16 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 @router.post("/register")
 def register(
-    username: str,
-    password: str,
-    role: str = "admin",
+    register_data: UserRegister,
     db: Session = Depends(get_db)
 ):
-    existing = crud.get_user_by_username(db, username)
+    if register_data.password != register_data.confirm_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Passwords do not match"
+        )
+
+    existing = crud.get_user_by_username(db, register_data.username)
 
     if existing:
         raise HTTPException(
@@ -31,9 +35,9 @@ def register(
         )
 
     user = User(
-        username=username,
-        hashed_password=get_password_hash(password),
-        role=role
+        username=register_data.username,
+        hashed_password=get_password_hash(register_data.password),
+        role="user"
     )
 
     db.add(user)
@@ -72,7 +76,8 @@ def login(login_data: UserLogin, db: Session = Depends(get_db)):
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "role": user.role
+        "role": user.role,
+        "user_id": user.id
     }
 
 
@@ -104,5 +109,6 @@ def login_form(
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "role": user.role
+        "role": user.role,
+        "user_id": user.id
     }

@@ -1,38 +1,35 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, AlertOctagon, BarChart3, Camera, LogOut, Shield, Upload } from 'lucide-react';
+import { LayoutDashboard, AlertOctagon, LogOut, Shield, Upload, Camera } from 'lucide-react';
 import { authService } from '../services/api';
 
-const Sidebar = () => {
+const UserSidebar = () => {
   const username = authService.getUsername();
   const role = authService.getUserRole();
 
   const menuItems = [
-    { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/violations', label: 'Violations', icon: AlertOctagon },
-    { path: '/reports', label: 'Reports', icon: BarChart3, adminOnly: true },
-    { path: '/cameras', label: 'Cameras', icon: Camera, adminOnly: true },
-    { path: '/upload', label: 'User Portal', icon: Upload }
+    { path: '/user/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/user/upload', label: 'Upload Video', icon: Upload },
+    { path: '/user/violations', label: 'My Violations', icon: AlertOctagon },
+    { path: '/user/live-camera', label: 'Live Camera', icon: Camera }
   ];
-
-  const filteredMenuItems = menuItems.filter(item => !item.adminOnly || role === 'admin');
 
   return (
     <div className="sidebar">
       <div className="sidebar-logo">
         <AlertOctagon size={24} color="#00d2ff" />
-        <span>SMOKE<b>MONITOR</b></span>
+        <span>USER<b>PORTAL</b></span>
       </div>
 
       <ul className="sidebar-menu">
-        {filteredMenuItems.map((item) => {
+        {menuItems.map((item) => {
           const Icon = item.icon;
           return (
             <li key={item.path}>
               <NavLink 
                 to={item.path} 
                 className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
-                end={item.path === '/'}
+                end={item.path === '/user/dashboard'}
               >
                 <Icon size={18} />
                 <span>{item.label}</span>
@@ -44,14 +41,14 @@ const Sidebar = () => {
 
       <div className="sidebar-footer">
         <div className="user-badge">
-          <div className="user-badge-avatar">
-            {username ? username.substring(0, 2).toUpperCase() : 'OP'}
+          <div className="user-badge-avatar" style={{ background: '#32d74b' }}>
+            {username ? username.substring(0, 2).toUpperCase() : 'US'}
           </div>
           <div>
-            <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{username || 'operator'}</div>
+            <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{username || 'user'}</div>
             <div style={{ fontSize: '0.7rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '3px' }}>
-              <Shield size={10} />
-              <span>{role.toUpperCase()}</span>
+              <Shield size={10} color="#32d74b" />
+              <span style={{ color: '#32d74b' }}>{role.toUpperCase()}</span>
             </div>
           </div>
         </div>
@@ -69,4 +66,4 @@ const Sidebar = () => {
   );
 };
 
-export default Sidebar;
+export default UserSidebar;

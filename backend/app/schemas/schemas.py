@@ -8,6 +8,7 @@ class Token(BaseModel):
     access_token: str
     token_type: str
     role: str
+    user_id: Optional[UUID] = None
 
 class TokenData(BaseModel):
     username: Optional[str] = None
@@ -46,6 +47,7 @@ class CameraResponse(BaseModel):
 # Violation Schemas
 class ViolationCreate(BaseModel):
     camera_id: Optional[UUID] = None
+    uploaded_video_id: Optional[UUID] = None
     plate_number: str
     timestamp: str
     confidence: float
@@ -61,6 +63,7 @@ class ViolationCreate(BaseModel):
 class ViolationResponse(BaseModel):
     id: UUID
     camera_id: Optional[UUID] = None
+    uploaded_video_id: Optional[UUID] = None
     camera_name: Optional[str] = None
     plate_number: str
     timestamp: str
@@ -119,3 +122,25 @@ class ReportResponse(BaseModel):
     dismissed_violations: int
     daily_trend: List[DailyStats]
     camera_distribution: List[CameraStats]
+
+class UploadedVideoResponse(BaseModel):
+    id: UUID
+    user_id: UUID
+    filename: str
+    filepath: str
+    status: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class UserRegister(BaseModel):
+    username: str
+    password: str
+    confirm_password: str
+
+class UserDashboardResponse(BaseModel):
+    total_uploaded_videos: int
+    total_violations: int
+    recent_uploads: List[UploadedVideoResponse]
+    recent_violations: List[ViolationResponse]
