@@ -18,6 +18,7 @@ import subprocess
 import shutil
 import tempfile
 import logging
+import pytz
 DEVICE = 0 if torch.cuda.is_available() else "cpu"
 
 print(f"Using device: {DEVICE}")
@@ -263,7 +264,11 @@ def save_violation_to_postgres(stable_id, final_plate, timestamp, smoke_count, r
         worker_id = "worker_1"
         model_version = "yolov8n-smoke-v1"
         processing_duration = 0.05
-        created_at = datetime.utcnow()
+        from datetime import datetime
+        import pytz
+
+        ist = pytz.timezone("Asia/Kolkata")
+        created_at = datetime.now(ist)
 
         # Insert violation record
         cur.execute("""
@@ -505,7 +510,13 @@ def process_image_frame(frame, frame_no, fps, out_writer):
                 )
                 saved_suspects.add(stable_id)
                 continue
+            # Validate Indian plate format
+            INDIAN_PLATE_REGEX = r'^[A-Z]{2}[0-9]{2}[A-Z]{2}[0-9]{4}$'
 
+            if not re.match(INDIAN_PLATE_REGEX, final_plate):
+                print(f"Rejected invalid plate: {final_plate}")
+                saved_suspects.add(stable_id)
+                continue
             # Generate Proof Video from buffer
             print(f"Generating proof video for Vehicle {stable_id}...")
             height, width = frame.shape[:2]
