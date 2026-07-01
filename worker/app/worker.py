@@ -14,7 +14,11 @@ import numpy as np
 from ultralytics import YOLO
 import easyocr
 import torch
-
+import subprocess
+import shutil
+import tempfile
+import logging
+import pytz
 DEVICE = 0 if torch.cuda.is_available() else "cpu"
 
 print(f"Using device: {DEVICE}")
@@ -229,6 +233,9 @@ def read_plate_from_crop(plate_crop, stable_id):
 # =====================================
 
 def save_violation_to_postgres(stable_id, final_plate, timestamp, smoke_count, rel_crop_path, rel_plate_path, rel_frame_path, rel_video_path, uploaded_video_id=None):
+    if not final_plate or final_plate == "UNKNOWN":
+        print("Skipping UNKNOWN plate")
+        return
     print(f"Saving violation event for stable ID {stable_id} to Postgres (Upload Ref: {uploaded_video_id})...")
     conn = None
     try:
@@ -257,7 +264,11 @@ def save_violation_to_postgres(stable_id, final_plate, timestamp, smoke_count, r
         worker_id = "worker_1"
         model_version = "yolov8n-smoke-v1"
         processing_duration = 0.05
-        created_at = datetime.utcnow()
+        from datetime import datetime
+        import pytz
+
+        ist = pytz.timezone("Asia/Kolkata")
+        created_at = datetime.now(ist)
 
         # Insert violation record
         cur.execute("""
@@ -312,6 +323,54 @@ def save_violation_to_postgres(stable_id, final_plate, timestamp, smoke_count, r
 # =====================================
 # We maintain buffered frames for generating proof videos
 recent_frames = deque(maxlen=300)
+logger = logging.getLogger("proof_video")
+
+def _transcode_to_h264(src_path, dst_path):
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-i", src_path,
+        "-c:v", "libx264",
+        "-pix_fmt", "yuv420p",
+        "-preset", "veryfast",
+        "-movflags", "+faststart",
+        dst_path,
+    ]
+
+    result = subprocess.run(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
+
+    return result.returncode == 0
+
+
+def generate_proof_video(recent_frames, video_path, fps, width, height):
+
+    temp_video = video_path.replace(".mp4", "_temp.mp4")
+
+    writer = cv2.VideoWriter(
+        temp_video,
+        cv2.VideoWriter_fourcc(*"mp4v"),
+        fps,
+        (width, height)
+    )
+
+    for f_buf in recent_frames:
+        writer.write(f_buf)
+
+    writer.release()
+
+    success = _transcode_to_h264(temp_video, video_path)
+
+    if success:
+        print(f"Proof video converted to browser-compatible H264: {video_path}")
+
+        if os.path.exists(temp_video):
+            os.remove(temp_video)
+    else:
+        print(f"FFmpeg conversion failed for {video_path}")
 
 def process_image_frame(frame, frame_no, fps, out_writer, uploaded_video_id=None):
     global next_stable_id
@@ -455,41 +514,30 @@ def process_image_frame(frame, frame_no, fps, out_writer, uploaded_video_id=None
                 )
                 saved_suspects.add(stable_id)
                 continue
+            # Validate Indian plate format
+            INDIAN_PLATE_REGEX = r'^[A-Z]{2}[0-9]{2}[A-Z]{2}[0-9]{4}$'
 
+            if not re.match(INDIAN_PLATE_REGEX, final_plate):
+                print(f"Rejected invalid plate: {final_plate}")
+                saved_suspects.add(stable_id)
+                continue
             # Generate Proof Video from buffer
             print(f"Generating proof video for Vehicle {stable_id}...")
             height, width = frame.shape[:2]
-            v_writer = cv2.VideoWriter(
-                video_path_temp,
-                cv2.VideoWriter_fourcc(*"mp4v"),
+            generate_proof_video(
+                recent_frames,
+                video_path,
                 fps,
-                (width, height)
+                width,
+                height
             )
-            # Write recent frames to create 5-10 second clip of the violation
-            for f_buf in recent_frames:
-                v_writer.write(f_buf)
-            v_writer.release()
+            print(f"Frames in buffer: {len(recent_frames)}")
 
-            # Convert to browser compatible H.264 format
-            import subprocess
-            try:
-                cmd = [
-                    "ffmpeg", "-y", "-i", video_path_temp,
-                    "-vcodec", "libx264", "-pix_fmt", "yuv420p",
-                    "-profile:v", "baseline", "-level", "3.0", video_path
-                ]
-                subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
-                if os.path.exists(video_path_temp):
-                    os.remove(video_path_temp)
-            except Exception as e:
-                print(f"Error converting video to H264: {e}")
-                # Fallback to direct renaming if ffmpeg fails
-                try:
-                    import shutil
-                    shutil.move(video_path_temp, video_path)
-                except Exception as move_err:
-                    print(f"Fallback move failed: {move_err}")
-
+            cap = cv2.VideoCapture(video_path)
+            print("Proof video opened:", cap.isOpened())
+            print("Frame count:", int(cap.get(cv2.CAP_PROP_FRAME_COUNT)))
+            print("FPS:", cap.get(cv2.CAP_PROP_FPS))
+            cap.release()
             # Save violation details in PostgreSQL
             save_violation_to_postgres(
                 stable_id,

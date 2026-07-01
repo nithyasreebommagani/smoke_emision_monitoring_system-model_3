@@ -89,7 +89,7 @@ class NotificationResponse(BaseModel):
     id: UUID
     violation_id: UUID
     message: str
-    is_read: bool
+    status: str
     created_at: datetime
 
     class Config:

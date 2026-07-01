@@ -112,7 +112,19 @@ const Dashboard = ({ newViolationTrigger, onViewEvidence }) => {
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span className="status-badge pending" style={{ fontSize: '0.65rem' }}>PENDING VERIFICATION</span>
+                    <span
+                      className={`status-badge ${
+                        alert.status === "approved"
+                          ? "approved"
+                          : alert.status === "dismissed"
+                          ? "dismissed"
+                          : "pending"
+                      }`}
+                      style={{ fontSize: '0.65rem' }}
+                    >
+                      {alert.status?.toUpperCase() || "PENDING"}
+                    </span>
+
                     <ChevronRight size={16} color="var(--color-text-muted)" />
                   </div>
                 </div>

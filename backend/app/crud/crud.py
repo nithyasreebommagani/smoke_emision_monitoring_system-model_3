@@ -9,6 +9,7 @@ from app.models.violation import Violation
 from app.models.notification import Notification
 from app.models.uploaded_video import UploadedVideo
 from app.schemas.schemas import CameraCreate, ViolationCreate
+
 def get_unique_vehicles_count(db):
     return db.query(Violation.plate_number)\
              .distinct()\
@@ -16,7 +17,13 @@ def get_unique_vehicles_count(db):
 # User Operations
 def get_user_by_username(db: Session, username: str) -> Optional[User]:
     return db.query(User).filter(User.username == username).first()
-
+def get_recent_violations(db, limit=8):
+    return (
+        db.query(Violation)
+        .order_by(Violation.created_at.desc())
+        .limit(limit)
+        .all()
+    )
 # Camera Operations
 def get_cameras(db: Session) -> List[Camera]:
     return db.query(Camera).order_by(Camera.created_at.desc()).all()
