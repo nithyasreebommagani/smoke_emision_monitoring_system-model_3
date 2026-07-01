@@ -9,7 +9,7 @@ import {
 
 import Sidebar from './components/Sidebar';
 import NotificationToast from './components/NotificationToast';
-
+import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
 import Violations from './pages/Violations';
 import Reports from './pages/Reports';
@@ -155,18 +155,18 @@ const AppContent = () => {
         {/* Dashboard */}
         <Route
           path="/"
+          element={<Home />}
+        />
+        <Route
+          path="/portal"
           element={
             <PrivateRoute>
-              <MainLayout
-                newViolationTrigger={newViolationTrigger}
-                onViewEvidence={handleViewEvidence}
-              >
+              <MainLayout>
                 <Dashboard />
               </MainLayout>
             </PrivateRoute>
           }
         />
-
         {/* Violations */}
         <Route
           path="/violations"

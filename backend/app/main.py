@@ -5,7 +5,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.core.config import settings
 from app.core.database import Base, engine
-from app.api import auth, violations, cameras, dashboard, reports, websockets
+from app.api import (
+    auth,
+    violations,
+    cameras,
+    dashboard,
+    reports,
+    websockets,
+    uploads
+)
 from app.services.notifications import manager, redis_notification_listener
 
 # Automatically create tables if not exists
@@ -43,6 +51,7 @@ app.include_router(violations.router, prefix="/api")
 app.include_router(cameras.router, prefix="/api")
 app.include_router(dashboard.router, prefix="/api")
 app.include_router(reports.router, prefix="/api")
+app.include_router(uploads.router, prefix="/api")
 app.include_router(websockets.router)  # Mounted at root for ws://host:port/ws
 
 @app.on_event("startup")
