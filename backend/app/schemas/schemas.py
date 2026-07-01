@@ -138,6 +138,7 @@ class UserRegister(BaseModel):
     username: str
     password: str
     confirm_password: str
+    role: str = "user"
 
 class UserDashboardResponse(BaseModel):
     total_uploaded_videos: int

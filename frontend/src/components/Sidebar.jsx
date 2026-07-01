@@ -11,8 +11,7 @@ const Sidebar = () => {
     { path: '/', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/violations', label: 'Violations', icon: AlertOctagon },
     { path: '/reports', label: 'Reports', icon: BarChart3, adminOnly: true },
-    { path: '/cameras', label: 'Cameras', icon: Camera, adminOnly: true },
-    { path: '/upload', label: 'User Portal', icon: Upload }
+    { path: '/cameras', label: 'Cameras', icon: Camera, adminOnly: true }
   ];
 
   const filteredMenuItems = menuItems.filter(item => !item.adminOnly || role === 'admin');

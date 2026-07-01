@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { violationService, authService } from '../services/api';
 
-const API_BASE = '';
+const API_BASE = 'http://localhost:8000';
 
 const Evidence = ({ violationId, onClose, onRefresh }) => {
   const role = authService.getUserRole();

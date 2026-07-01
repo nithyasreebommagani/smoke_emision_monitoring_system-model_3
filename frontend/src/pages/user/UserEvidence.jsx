@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ShieldAlert, Image, Video, Loader } from 'lucide-react';
 import { userService } from '../../services/api';
 
-const API_BASE = '';
+const API_BASE = 'http://localhost:8000';
 
 const UserEvidence = ({ violationId, onClose }) => {
   const [details, setDetails] = useState(null);

@@ -25,13 +25,22 @@ const Login = () => {
       if (data.role === 'admin') {
         navigate('/');
       } else {
-        navigate('/upload');
+        navigate('/user/dashboard');
       }
     } catch (err) {
-      setError(
-        err.response?.data?.detail ||
-        'Failed to connect to authentication server. Please check your credentials.'
-      );
+      let errorMsg = 'Failed to connect to authentication server. Please check your credentials.';
+      if (err.response?.data?.detail) {
+        if (typeof err.response.data.detail === 'string') {
+          errorMsg = err.response.data.detail;
+        } else if (Array.isArray(err.response.data.detail)) {
+          errorMsg = err.response.data.detail[0].msg;
+        } else {
+          errorMsg = JSON.stringify(err.response.data.detail);
+        }
+      } else if (err.message) {
+        errorMsg = err.message;
+      }
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -276,9 +285,9 @@ const Login = () => {
               padding: '14px',
               marginTop: '10px'
             }}
-            onClick={() => navigate('/register')}
+            onClick={() => isAdmin ? navigate('/register') : navigate('/signup')}
           >
-            Create Account
+            {isAdmin ? 'Create Admin Account' : 'Create User Account'}
           </button>
         </form>
 

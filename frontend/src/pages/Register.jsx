@@ -22,13 +22,11 @@ const Register = () => {
     try {
       await axios.post(
         "http://localhost:8000/api/auth/register",
-        null,
         {
-          params: {
-            username,
-            password,
-            role: "admin"
-          }
+          username,
+          password,
+          confirm_password: password,
+          role: "admin"
         }
       );
 
@@ -38,10 +36,17 @@ const Register = () => {
     } catch (err) {
       console.error(err);
 
-      alert(
-        err.response?.data?.detail ||
-        "Registration failed"
-      );
+      let errorMsg = "Registration failed";
+      if (err.response?.data?.detail) {
+        if (typeof err.response.data.detail === 'string') {
+          errorMsg = err.response.data.detail;
+        } else if (Array.isArray(err.response.data.detail)) {
+          errorMsg = err.response.data.detail[0].msg;
+        } else {
+          errorMsg = JSON.stringify(err.response.data.detail);
+        }
+      }
+      alert(errorMsg);
     } finally {
       setLoading(false);
     }
