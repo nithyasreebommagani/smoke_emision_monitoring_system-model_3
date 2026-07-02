@@ -12,7 +12,8 @@ from app.api import (
     dashboard,
     reports,
     websockets,
-    uploads
+    uploads,
+    jobs
 )
 from app.services.notifications import manager, redis_notification_listener
 
@@ -52,6 +53,7 @@ app.include_router(cameras.router, prefix="/api")
 app.include_router(dashboard.router, prefix="/api")
 app.include_router(reports.router, prefix="/api")
 app.include_router(uploads.router, prefix="/api")
+app.include_router(jobs.router, prefix="/api")
 app.include_router(websockets.router)  # Mounted at root for ws://host:port/ws
 
 @app.on_event("startup")

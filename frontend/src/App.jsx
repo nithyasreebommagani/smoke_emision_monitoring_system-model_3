@@ -10,6 +10,7 @@ import {
 import Sidebar from './components/Sidebar';
 import NotificationToast from './components/NotificationToast';
 import Home from './pages/Home';
+import Processing from './pages/Processing';
 import Dashboard from './pages/Dashboard';
 import Violations from './pages/Violations';
 import Reports from './pages/Reports';
@@ -17,7 +18,7 @@ import Cameras from './pages/Cameras';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Evidence from './pages/Evidence';
-
+import Result from "./pages/Result";
 import { authService } from './services/api';
 
 // Route Guard
@@ -156,6 +157,14 @@ const AppContent = () => {
         <Route
           path="/"
           element={<Home />}
+        />
+        <Route
+          path="/processing"
+          element={<Processing />}
+        />
+        <Route
+          path="/result"
+          element={<Result />}
         />
         <Route
           path="/portal"
